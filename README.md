@@ -11,9 +11,12 @@ Supports model slicing, rank-wise export, and ZK-proof-ready computation blocks.
 - ✅ Modular architecture (TP, loaders, ONNX, CLI)
 - ✅ Production-grade logging, CLI, and packaging
 
-## 📦 Usage
+## 📦 Quick Start
 
-### Export layer 0 across GPUs:
-
-```bash
-torchrun --nproc_per_node=4 -m llama3_export.export
+### Export Layer 0 Across 4 GPUs:
+    ```bash
+    torchrun --nproc_per_node=4 -m llama3_export.export
+    ```
+Inputs: Pretrained LLaMA-3.2-1B checkpoint
+Outputs: Sharded ONNX graphs for each rank under the designated export folder
+Applications: ZK-proof systems, distributed inference, efficient model compilation
