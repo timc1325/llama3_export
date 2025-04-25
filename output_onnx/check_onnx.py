@@ -17,3 +17,6 @@ if onnx.helper.printable_graph(model0.graph) == onnx.helper.printable_graph(mode
     print("✅ Graphs are structurally identical")
 else:
     print("❌ Graphs differ")
+
+print(f"Number of nodes: {len(model0.graph.node)}")
+print(sum(init.dims[0] * init.dims[1] for init in model0.graph.initializer if len(init.dims) == 2))
