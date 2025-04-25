@@ -18,6 +18,6 @@ Supports model slicing, rank-wise export, and ZK-proof-ready computation blocks.
 ``` bash
 torchrun --nproc_per_node=4 -m llama3_export.export
 ```
-Inputs: Pretrained LLaMA-3.2-1B checkpoint
-Outputs: Sharded ONNX graphs for each rank under the designated export folder
-Applications: ZK-proof systems, distributed inference, efficient model compilation
+- Inputs: Pretrained LLaMA-3.2-1B checkpoint
+- Outputs: Sharded ONNX graphs for each rank under the designated export folder
+- Applications: ZK-proof systems, distributed inference, efficient model compilation
