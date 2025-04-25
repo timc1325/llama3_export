@@ -57,7 +57,13 @@ def main(args):
             "vk": "test.vk",
             "proof": "test.pf"
         }
-        x, position_ids = export_to_onnx(model, paths["onnx"])  #export model to onnx
+        run_args = ezkl.PyRunArgs()
+        run_args.input_visibility = "private"
+        run_args.param_visibility = "fixed"
+        run_args.output_visibility = "public"
+        run_args.num_inner_cols = 2
+        run_args.variables = [("batch_size", 1)]
+        x, position_ids = export_to_onnx(model, paths["onnx"], py_run_args=run_args)  #export model to onnx
         input_data = {
             "x": x.tolist(),
             "position_ids": position_ids.tolist()
