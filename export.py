@@ -9,7 +9,7 @@ from .weight_loader import load_layer0_weights_into_custom_block
 from .onnx_export import export_to_onnx, save_json, run_ezkl_cmd
 import torch.nn as nn
 import os
-import ezkl
+import torch
 
 import logging
 logger = logging.getLogger("llama3_export")
@@ -57,55 +57,21 @@ def main(args):
             "vk": "test.vk",
             "proof": "test.pf"
         }
-        run_args = ezkl.PyRunArgs()
-        run_args.input_visibility = "private"
-        run_args.param_visibility = "fixed"
-        run_args.output_visibility = "public"
-        run_args.num_inner_cols = 2
-        run_args.variables = [("batch_size", 1)]
-        x, position_ids = export_to_onnx(model, paths["onnx"], py_run_args=run_args)  #export model to onnx
+        B, T, hidden_dim  = 2, 8, 2048
+        x = torch.randn(B, T, hidden_dim)
+        position_ids = torch.arange(T).unsqueeze(0).expand(B, -1)
+        export_to_onnx(x, position_ids, model, paths["onnx"])  #export model to onnx
         input_data = {
-            "x": x.tolist(),
-            "position_ids": position_ids.tolist()
+            "input_data": {
+                "x": x.detach().numpy().reshape([-1]).tolist(),                     # input name must match ONNX input
+                "position_ids": position_ids.detach().numpy().reshape([-1]).tolist()
+            }
         }
-        input_data = {"x": x.tolist()}
-        save_json(input_data, paths["input"])
-        # Step 3: generate settings.json
+        data_json = dict(input_data = [x.detach().numpy().reshape([-1]).tolist(),position_ids.detach().numpy().reshape([-1]).tolist()])
+        save_json(data_json, paths["input"])
         
-        res = ezkl.gen_settings(model = paths["onnx"], output = paths["settings"])
-        res = ezkl.calibrate_settings(paths["onnx"], paths["settings"], target="resources")
-        # assert res == True
-        
-        # Step 4: compile the circuit
-        res = ezkl.compile_circuit(model=paths["onnx"],
-            compiled_circuit=paths["compiled"],
-            settings_path=paths["settings"])
-        assert res == True
-
-        ezkl.gen_witness(
-            compiled_model_path=paths["compiled"],
-            input_path=paths["input"],
-            output_path=paths["witness"]
-        )
-
-        ezkl.setup_circuit(
-            compiled_model_path=paths["compiled"],
-            pk_path=paths["pk"],
-            vk_path=paths["vk"]
-        )
-
-        ezkl.prove_circuit(
-            witness_path=paths["witness"],
-            compiled_model_path=paths["compiled"],
-            pk_path=paths["pk"],
-            proof_path=paths["proof"],
-            strategy="single"
-        )
-
     logger.info("✅ Done.")
-        
     destroy_distributed()
-
     
 
 if __name__ == "__main__":

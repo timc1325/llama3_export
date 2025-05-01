@@ -6,31 +6,23 @@ import ezkl
 
 logger = logging.getLogger("llama3_export")
 
-def export_to_onnx(model, output_path):
+def export_to_onnx(x, position_ids, model, output_path):
     model.eval()
-    B, T = 2, 8
-    hidden_dim = 2048
-    x = torch.randn(B, T, hidden_dim)
-    position_ids = torch.arange(T).unsqueeze(0).expand(B, -1)
-
     torch.onnx.export(
         model,
         (x, position_ids),
         output_path,
+        export_params=True,
         input_names=["x", "position_ids"],
         output_names=["output"],
-        dynamic_axes={
-            "x": {0: "batch", 1: "seq"},
-            "position_ids": {0: "batch", 1: "seq"},
-            "output": {0: "batch", 1: "seq"},
-        },
-        opset_version=13
+        dynamic_axes=None,
+        opset_version=18
     )
     return x, position_ids
 
 def save_json(obj, path):
     with open(path, "w") as f:
-        json.dump(obj, f, indent=2)
+        json.dump(obj, f)
 
 
 import ezkl

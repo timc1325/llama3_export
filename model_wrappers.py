@@ -12,8 +12,8 @@ class DummyRotaryEmbedding(nn.Module):
         freqs = torch.arange(0, self.head_dim, 2, device=x.device).float()
         freqs = 1.0 / (10000 ** (freqs / self.head_dim))
         angles = torch.einsum("bt,f->btf", position_ids.float(), freqs)
-        sin = torch.sin(angles).repeat_interleave(2, dim=-1)
-        cos = torch.cos(angles).repeat_interleave(2, dim=-1)
+        sin = torch.stack([torch.sin(angles), torch.sin(angles)], dim=-1).reshape(*angles.shape[:-1], angles.shape[-1] * 2)
+        cos = torch.stack([torch.cos(angles), torch.cos(angles)], dim=-1).reshape(*angles.shape[:-1], angles.shape[-1] * 2)
         return cos, sin
 
 
@@ -53,8 +53,6 @@ class RotaryAttentionBlock(nn.Module):
         self.o_proj = nn.Linear(n_heads * head_dim// world_size, hidden_dim, bias=False)
         self.rotary_emb = DummyRotaryEmbedding(head_dim)
         self.world_size = world_size
-        self.local_n_heads = n_heads // world_size
-        self.local_kv_heads = kv_heads // world_size
 
     def rotate_half(self, x):
         x1, x2 = x.chunk(2, dim=-1)
@@ -65,7 +63,7 @@ class RotaryAttentionBlock(nn.Module):
         if self.n_heads == self.n_kv:
             return x
         n_rep = self.n_heads // self.n_kv
-        return x.unsqueeze(3).expand(B, T, H, n_rep, D).reshape(B, T, self.n_heads//self.world_size, D)
+        return x.unsqueeze(3).repeat(1, 1, 1, n_rep, 1).reshape(B, T, self.n_heads//self.world_size, D)
 
     def forward(self, x, position_ids):
         B, T, _ = x.shape
@@ -88,7 +86,7 @@ class RotaryAttentionBlock(nn.Module):
         attn_probs = F.softmax(attn_scores, dim=-1)
         out = torch.matmul(attn_probs, v)
 
-        out = out.transpose(1, 2).contiguous().view(B, T, self.local_n_heads * self.head_dim)
+        out = out.transpose(1, 2).contiguous().view(B, T, self.n_heads//self.world_size * self.head_dim)
         return self.o_proj(out)
 
 
